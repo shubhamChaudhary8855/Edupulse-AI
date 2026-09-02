@@ -1,7 +1,9 @@
 from dataclasses import dataclass
-import re
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+from app.llm import generate_answer
 
 
 @dataclass
@@ -21,12 +23,10 @@ class KnowledgeBase:
         words = content.split()
         size, overlap = 120, 25
         start = 0
-        index = 0
         while start < len(words):
             text = " ".join(words[start:start + size]).strip()
             if text:
-                self.chunks.append(Chunk(f"{len(self.chunks)+1}", title, text))
-            index += 1
+                self.chunks.append(Chunk(f"{len(self.chunks) + 1}", title, text))
             start += size - overlap
         self.matrix = self.vectorizer.fit_transform([c.text for c in self.chunks])
 
@@ -43,10 +43,12 @@ class AnswerGenerator:
     def generate(self, question: str, results: list[tuple[Chunk, float]]) -> dict:
         if not results:
             return {"answer": "I could not find this information in the university knowledge base.", "sources": []}
-        # Grounded extractive baseline: return the most relevant context.
-        best = results[0][0]
-        answer = f"Based on the university documents: {best.text}"
-        sources = [{"chunk_id": c.chunk_id, "title": c.title, "score": round(score, 4)} for c, score in results]
+        source_context = [
+            {"chunk_id": c.chunk_id, "title": c.title, "text": c.text, "score": round(score, 4)}
+            for c, score in results
+        ]
+        answer = generate_answer(question, source_context)
+        sources = [{k: item[k] for k in ("chunk_id", "title", "score")} for item in source_context]
         return {"answer": answer, "sources": sources}
 
 
