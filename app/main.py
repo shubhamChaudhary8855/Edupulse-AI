@@ -1,8 +1,14 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from app.models import AskRequest, DocumentRequest
 from app.rag import generator, kb
 
-app = FastAPI(title="RAG University Knowledge Assistant", version="1.0.0")
+app = FastAPI(title="RAG University Knowledge Assistant", version="2.0.0")
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse("static/index.html")
 
 
 @app.get("/health")
