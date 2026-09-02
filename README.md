@@ -1,23 +1,32 @@
 # RAG-Based University Knowledge Assistant
 
-A retrieval-augmented generation (RAG) backend for answering university questions from trusted documents instead of relying only on model memory.
+A grounded university Q&A system that ingests trusted academic documents, retrieves relevant passages, and optionally uses an LLM to generate concise answers with source references.
 
-## Features
-- Document ingestion from `.txt` and `.md`
-- Chunking with overlap
-- TF-IDF retrieval with cosine similarity for a dependency-light baseline
-- Source-aware answers with citations
-- FastAPI endpoints for ingestion and question answering
-- Conversation-independent retrieval, making responses reproducible
-- Clear boundary between retrieval and generation
+## Production-style features
+- `.txt` / `.md` document ingestion
+- Overlapping chunking
+- TF-IDF + cosine retrieval baseline
+- Top-K source selection
+- Grounded optional OpenAI generation
+- Source metadata returned with every answer
+- Interactive browser dashboard
+- FastAPI + OpenAPI
+- GitHub Actions CI
+- No API key required for retrieval-only mode
 
 ## Architecture
 ```text
-University Docs -> Ingestion -> Chunking -> TF-IDF Index
-                                             |
-User Question -> Retriever -> Top-K Context -> Answer Generator
-                                             |
-                                         Sources
+University Docs
+      |
+ Ingestion -> Chunking -> TF-IDF Index
+                              |
+Student Question -> Retriever -> Top-K Context
+                                      |
+                         +------------+------------+
+                         |                         |
+                  Extractive mode            Optional LLM
+                         |                         |
+                         +---------- Answer + Sources
 ```
 
 ## Run
@@ -25,19 +34,23 @@ User Question -> Retriever -> Top-K Context -> Answer Generator
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+Open `http://127.0.0.1:8000/` for the dashboard or `/docs` for the API.
 
 ## API
-`POST /api/v1/documents`
-```json
-{"title":"Academic Calendar","content":"The semester begins on..."}
-```
+- `POST /api/v1/documents` — index a document
+- `POST /api/v1/ask` — retrieve and answer a question
+- `GET /health` — knowledge-base health
 
-`POST /api/v1/ask`
+Example:
 ```json
 {"question":"When does the semester begin?","top_k":3}
 ```
 
-The reference implementation uses extractive answers from retrieved context so it can run without an external LLM key. A production deployment can replace `AnswerGenerator` with an LLM while preserving the retrieval contract.
+## LLM mode
+Copy `.env.example`, set `OPENAI_API_KEY`, and optionally set `OPENAI_MODEL`. The LLM receives only retrieved document context, reducing unsupported answers compared with unconstrained generation.
 
-## Why this project matters
-This demonstrates practical RAG fundamentals: ingestion, chunking, indexing, semantic retrieval, grounding, citations, and evaluation boundaries.
+## Security
+Never commit API keys. Keep `.env` local and use environment variables or a deployment secret manager.
+
+## Next production upgrades
+Persistent vector database, PostgreSQL document metadata, authentication/RBAC, document upload validation, conversation history, retrieval evaluation (precision/recall), hybrid BM25 + embeddings, and deployment monitoring.
